@@ -7,6 +7,7 @@ using URLShortener.API.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JWT"));
+builder.Services.Configure<DatabaseSettings>(builder.Configuration.GetSection("Database"));
 
 builder.Services.AddScoped<UserService>();
 
