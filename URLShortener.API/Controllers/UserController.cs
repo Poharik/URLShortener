@@ -8,7 +8,6 @@ using System.Security.Claims;
 using URLShortener.API.Services;
 using URLShortener.API.Models.Settings;
 using URLShortener.API.Models.Requests;
-using URLShortener.API.Models.Database;
 using URLShortener.API.Models.Responses;
 
 namespace URLShortener.API.Controllers;
@@ -31,27 +30,10 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Register([FromBody]RegisterRequest registerRequest)
     {
-        // check if the email and username are available
-        var conflictedUser = await _userService.GetUserByUsername(registerRequest.Username);
-        if (conflictedUser is not null)
-            return Unauthorized($"Username '{registerRequest.Username}' already in use.");
+        var registerResult = await _userService.Register(registerRequest);
 
-        conflictedUser = await _userService.GetUserByEmail(registerRequest.Email);
-        if (conflictedUser is not null)
-            return Unauthorized($"Email '{registerRequest.Email}' already in use.");
-
-        // hash the password
-        var passwordHasher = new PasswordHasher<object>();
-        var passwordHash = passwordHasher.HashPassword(null!, registerRequest.Password);
-        
-        // add user to database
-        await _userService.AddUser(new DbUser
-        {
-            Username = registerRequest.Username,
-            Email = registerRequest.Email,
-            PasswordHash = passwordHash,
-            DateCreated = DateTime.Now,
-        });
+        if (!registerResult.Succeeded)
+            return Unauthorized(registerResult.Message);
 
         var expires = DateTime.UtcNow.AddMinutes(30);
         var token = GenerateToken(registerRequest.Username, expires);
@@ -66,18 +48,12 @@ public class UserController : ControllerBase
     [HttpPost("login")]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> LogIn([FromBody]LoginRequest loginRequest)
+    public async Task<IActionResult> LogIn([FromBody]LogInRequest loginRequest)
     {
-        // check if user exists
-        var foundUser = await _userService.GetUserByUsername(loginRequest.Username);
-        if (foundUser is null)
-            return Unauthorized("Invalid credentials.");
-        
-        // validate password
-        var passwordHasher = new PasswordHasher<object>();
-        var veritifcationResult = passwordHasher.VerifyHashedPassword(null!, foundUser.PasswordHash, loginRequest.Password);
-        if (veritifcationResult == PasswordVerificationResult.Failed)
-            return Unauthorized("Invalid credentials.");
+        var logInResult = await _userService.LogIn(loginRequest);
+
+        if (!logInResult.Succeeded)
+            return Unauthorized(logInResult.Message);
 
         var expires = DateTime.UtcNow.AddMinutes(30);
         var token = GenerateToken(loginRequest.Username, expires);

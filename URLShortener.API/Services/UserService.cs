@@ -1,9 +1,10 @@
-using System.Linq.Expressions;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using URLShortener.API.Models.Settings;
 using URLShortener.API.Models.Database;
+using URLShortener.API.Models.Requests;
+using Microsoft.AspNetCore.Identity;
 
 namespace URLShortener.API.Services;
 
@@ -18,23 +19,81 @@ public class UserService
         _usersCollection = mongoDatabase.GetCollection<DbUser>(databaseSettings.Value.UsersCollectionName);
     }
 
-    public async Task<IEnumerable<DbUser>> GetUsers(Expression<Func<DbUser, bool>> expression)
+    public class RegisterResult
     {
-        var result = await _usersCollection.FindAsync(expression);
-        return result.ToEnumerable();
+        public bool Succeeded { get; set; }
+        public string? Message { get; set; }
     }
 
-    public async Task<DbUser?> GetUserByUsername(string username)
+    public class LogInResult
     {
-        var foundUser = await GetUsers(x => x.Username == username);
-        return foundUser.FirstOrDefault();
+        public bool Succeeded { get; set; }
+        public string? Message { get; set; }
     }
 
-    public async Task<DbUser?> GetUserByEmail(string email)
+    public async Task<RegisterResult> Register(RegisterRequest registerRequest)
     {
-        var foundUser = await GetUsers(x => x.Email == email);
-        return foundUser.FirstOrDefault();
+        // check if the email and username are available
+        var conflictedUser = await _usersCollection.FindAsync(x => x.Username == registerRequest.Username);
+        if (conflictedUser is not null)
+        {
+            return new RegisterResult
+            {
+                Succeeded = false,
+                Message = $"Username '{registerRequest.Username}' already in use."
+            };
+        }
+        
+        conflictedUser = await _usersCollection.FindAsync(x => x.Email == registerRequest.Email);
+        if (conflictedUser is not null)
+        {
+            return new RegisterResult
+            {
+                Succeeded = false,
+                Message = $"Email '{registerRequest.Email}' already in use."
+            };
+        }
+        
+        // hash the password
+        var passwordHasher = new PasswordHasher<object>();
+        var passwordHash = passwordHasher.HashPassword(null!, registerRequest.Password);
+
+        // add user to database
+        await _usersCollection.InsertOneAsync(new DbUser
+        {
+            Username = registerRequest.Username,
+            Email = registerRequest.Email,
+            PasswordHash = passwordHash,
+            DateCreated = DateTime.Now,
+        });
+
+        return new RegisterResult { Succeeded = true };
     }
 
-    public Task AddUser(DbUser user) => _usersCollection.InsertOneAsync(user);
+    public async Task<LogInResult> LogIn(LogInRequest loginRequest)
+    {
+        var foundUser = await _usersCollection.FindAsync(x => x.Username == loginRequest.Username);
+        if (!foundUser.Any())
+        {
+            return new LogInResult
+            {
+                Succeeded = false,
+                Message = $"User '{loginRequest.Username}' not found."
+            };
+        }
+
+        var passwordHash = foundUser.First().PasswordHash;
+        var passwordHasher = new PasswordHasher<object>();
+        var veritifcationResult = passwordHasher.VerifyHashedPassword(null!, passwordHash, loginRequest.Password);
+        if (veritifcationResult == PasswordVerificationResult.Failed)
+        {
+            return new LogInResult
+            {
+                Succeeded = false,
+                Message = $"Invalid password."
+            };
+        }
+
+        return new LogInResult { Succeeded = true };
+    }
 }
