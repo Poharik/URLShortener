@@ -22,13 +22,13 @@ public class UserController : ControllerBase
     }
 
     [HttpPost("register")]
-    [ProducesResponseType<RegisterResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Register([FromBody]RegisterRequest registerRequest)
     {
         var expires = DateTime.UtcNow.AddMinutes(30);
         var token = GenerateToken(registerRequest.Username, expires);
         
-        return Ok(new RegisterResponse
+        return Ok(new AuthResponse
         {
             Token = token,
             ExpiresOn = expires
@@ -36,13 +36,13 @@ public class UserController : ControllerBase
     }
 
     [HttpPost("login")]
-    [ProducesResponseType<LogInResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
     public async Task<IActionResult> LogIn([FromBody]LoginRequest loginRequest)
     {
         var expires = DateTime.UtcNow.AddMinutes(30);
         var token = GenerateToken(loginRequest.Username, expires);
 
-        return Ok(new LogInResponse
+        return Ok(new AuthResponse
         {
             Token = token,
             ExpiresOn = expires
