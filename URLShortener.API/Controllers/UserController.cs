@@ -6,6 +6,8 @@ using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using URLShortener.API.Models.Settings;
 using URLShortener.API.Models.Requests;
+using URLShortener.API.Models.Responses;
+
 namespace URLShortener.API.Controllers;
 
 [ApiController]
@@ -20,22 +22,34 @@ public class UserController : ControllerBase
     }
 
     [HttpPost("register")]
-    [ProducesResponseType<string>(StatusCodes.Status200OK)]
+    [ProducesResponseType<RegisterResponse>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Register([FromBody]RegisterRequest registerRequest)
     {
-        var token = GenerateToken(registerRequest.Username);
-        return Ok(token);
+        var expires = DateTime.UtcNow.AddMinutes(30);
+        var token = GenerateToken(registerRequest.Username, expires);
+        
+        return Ok(new RegisterResponse
+        {
+            Token = token,
+            ExpiresOn = expires
+        });
     }
 
     [HttpPost("login")]
-    [ProducesResponseType<string>(StatusCodes.Status200OK)]
+    [ProducesResponseType<LogInResponse>(StatusCodes.Status200OK)]
     public async Task<IActionResult> LogIn([FromBody]LoginRequest loginRequest)
     {
-        var token = GenerateToken(loginRequest.Username);
-        return Ok(token);
+        var expires = DateTime.UtcNow.AddMinutes(30);
+        var token = GenerateToken(loginRequest.Username, expires);
+
+        return Ok(new LogInResponse
+        {
+            Token = token,
+            ExpiresOn = expires
+        });
     }
 
-    private string GenerateToken(string username)
+    private string GenerateToken(string username, DateTime expires)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(_jwtSettings.Key);
@@ -49,7 +63,7 @@ public class UserController : ControllerBase
             IssuedAt = DateTime.UtcNow,
             Issuer = _jwtSettings.Issuer,
             Audience = _jwtSettings.Audience,
-            Expires = DateTime.UtcNow.AddMinutes(30),
+            Expires = expires,
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
         };
 
