@@ -4,7 +4,7 @@ using MongoDB.Driver;
 using URLShortener.API.Models.Settings;
 using URLShortener.API.Models.Database;
 using URLShortener.API.Models.Requests;
-using Microsoft.AspNetCore.Identity;
+using URLShortener.API.Models.Results;
 
 namespace URLShortener.API.Services;
 
@@ -17,18 +17,6 @@ public class UserService
         var mongoClient = new MongoClient(databaseSettings.Value.ConnectionString);
         var mongoDatabase = mongoClient.GetDatabase(databaseSettings.Value.DatabaseName);
         _usersCollection = mongoDatabase.GetCollection<DbUser>(databaseSettings.Value.UsersCollectionName);
-    }
-
-    public class RegisterResult
-    {
-        public bool Succeeded { get; set; }
-        public string? Message { get; set; }
-    }
-
-    public class LogInResult
-    {
-        public bool Succeeded { get; set; }
-        public string? Message { get; set; }
     }
 
     public async Task<RegisterResult> Register(RegisterRequest registerRequest)
