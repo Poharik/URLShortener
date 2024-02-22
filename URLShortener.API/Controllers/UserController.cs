@@ -30,9 +30,9 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest registerRequest)
     {
-        var registerResult = await _userService.Register(registerRequest);
+        var registerResult = await _userService.RegisterAsync(registerRequest);
 
-        if (!registerResult.Succeeded)
+        if (!registerResult.Success)
             return Unauthorized(registerResult.Message);
 
         var expires = DateTime.UtcNow.Add(_jwtSettings.TokenLifetime);
@@ -52,7 +52,8 @@ public class UserController : ControllerBase
     {
         var logInResult = await _userService.LogIn(loginRequest);
 
-        if (!logInResult.Succeeded)
+        var logInResult = await _userService.LogInAsync(loginRequest);
+        if (!logInResult.Success)
             return Unauthorized(logInResult.Message);
 
         var expires = DateTime.UtcNow.Add(_jwtSettings.TokenLifetime);
