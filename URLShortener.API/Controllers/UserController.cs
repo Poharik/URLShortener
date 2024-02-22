@@ -35,12 +35,12 @@ public class UserController : ControllerBase
         if (!registerResult.Succeeded)
             return Unauthorized(registerResult.Message);
 
-        var expires = DateTime.UtcNow.AddMinutes(30);
-        var token = GenerateToken(registerRequest.Username, expires);
+        var expires = DateTime.UtcNow.Add(_jwtSettings.TokenLifetime);
+        var jwtToken = GenerateToken(registerRequest.Username, expires);
         
         return Ok(new AuthResponse
         {
-            Token = token,
+            Token = jwtToken,
             ExpiresOn = expires
         });
     }
@@ -55,12 +55,12 @@ public class UserController : ControllerBase
         if (!logInResult.Succeeded)
             return Unauthorized(logInResult.Message);
 
-        var expires = DateTime.UtcNow.AddMinutes(30);
-        var token = GenerateToken(loginRequest.Username, expires);
+        var expires = DateTime.UtcNow.Add(_jwtSettings.TokenLifetime);
+        var jwtToken = GenerateToken(loginRequest.Username, expires);
 
         return Ok(new AuthResponse
         {
-            Token = token,
+            Token = jwtToken,
             ExpiresOn = expires
         });
     }
