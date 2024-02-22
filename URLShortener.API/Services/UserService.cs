@@ -10,6 +10,7 @@ namespace URLShortener.API.Services;
 
 public class UserService
 {
+    private const string InvalidCredentialsMessage = "Invalid username or password.";
     private readonly IMongoCollection<DbUser> _usersCollection;
 
     public UserService(IOptions<DatabaseSettings> databaseSettings)
@@ -19,25 +20,25 @@ public class UserService
         _usersCollection = mongoDatabase.GetCollection<DbUser>(databaseSettings.Value.UsersCollectionName);
     }
 
-    public async Task<RegisterResult> Register(RegisterRequest registerRequest)
+    public async Task<RegisterResult> RegisterAsync(RegisterRequest registerRequest)
     {
         // check if the email and username are available
         var conflictedUser = await _usersCollection.FindAsync(x => x.Username == registerRequest.Username);
-        if (conflictedUser is not null)
+        if (conflictedUser.Any())
         {
             return new RegisterResult
             {
-                Succeeded = false,
+                Success = false,
                 Message = $"Username '{registerRequest.Username}' already in use."
             };
         }
         
         conflictedUser = await _usersCollection.FindAsync(x => x.Email == registerRequest.Email);
-        if (conflictedUser is not null)
+        if (conflictedUser.Any())
         {
             return new RegisterResult
             {
-                Succeeded = false,
+                Success = false,
                 Message = $"Email '{registerRequest.Email}' already in use."
             };
         }
@@ -55,33 +56,35 @@ public class UserService
             DateCreated = DateTime.Now,
         });
 
-        return new RegisterResult { Succeeded = true };
+        return new RegisterResult { Success = true };
     }
 
-    public async Task<LogInResult> LogIn(LogInRequest loginRequest)
+    public async Task<LogInResult> LogInAsync(LogInRequest loginRequest)
     {
-        var foundUser = await _usersCollection.FindAsync(x => x.Username == loginRequest.Username);
-        if (!foundUser.Any())
+        var foundRecords = await _usersCollection.FindAsync(x => x.Username == loginRequest.Username);
+        var foundUser = foundRecords.FirstOrDefault();
+
+        if (foundUser == default)
         {
             return new LogInResult
             {
-                Succeeded = false,
-                Message = $"User '{loginRequest.Username}' not found."
+                Success = false,
+                Message = InvalidCredentialsMessage
             };
         }
 
-        var passwordHash = foundUser.First().PasswordHash;
+        var passwordHash = foundUser.PasswordHash;
         var passwordHasher = new PasswordHasher<object>();
         var veritifcationResult = passwordHasher.VerifyHashedPassword(null!, passwordHash, loginRequest.Password);
         if (veritifcationResult == PasswordVerificationResult.Failed)
         {
             return new LogInResult
             {
-                Succeeded = false,
-                Message = $"Invalid password."
+                Success = false,
+                Message = InvalidCredentialsMessage
             };
         }
 
-        return new LogInResult { Succeeded = true };
+        return new LogInResult { Success = true };
     }
 }
