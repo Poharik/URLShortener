@@ -1,6 +1,6 @@
-using System.Security.Cryptography;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using Microsoft.AspNetCore.Identity;
 using URLShortener.API.Models.Settings;
 using URLShortener.API.Models.Database;
 using URLShortener.API.Models.Requests;
@@ -11,13 +11,14 @@ namespace URLShortener.API.Services;
 public class UserService
 {
     private const string InvalidCredentialsMessage = "Invalid username or password.";
-    private readonly IMongoCollection<DbUser> _usersCollection;
+
+    private readonly IMongoCollection<UserRecord> _usersCollection;
 
     public UserService(IOptions<DatabaseSettings> databaseSettings)
     {
         var mongoClient = new MongoClient(databaseSettings.Value.ConnectionString);
         var mongoDatabase = mongoClient.GetDatabase(databaseSettings.Value.DatabaseName);
-        _usersCollection = mongoDatabase.GetCollection<DbUser>(databaseSettings.Value.UsersCollectionName);
+        _usersCollection = mongoDatabase.GetCollection<UserRecord>(databaseSettings.Value.UserCollectionName);
     }
 
     public async Task<RegisterResult> RegisterAsync(RegisterRequest registerRequest)
@@ -48,7 +49,7 @@ public class UserService
         var passwordHash = passwordHasher.HashPassword(null!, registerRequest.Password);
 
         // add user to database
-        await _usersCollection.InsertOneAsync(new DbUser
+        await _usersCollection.InsertOneAsync(new UserRecord
         {
             Username = registerRequest.Username,
             Email = registerRequest.Email,
