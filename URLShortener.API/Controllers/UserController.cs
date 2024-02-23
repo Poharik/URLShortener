@@ -27,9 +27,13 @@ public class UserController : ControllerBase
 
     [HttpPost("register")]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest registerRequest)
     {
+        if (registerRequest is null || !ModelState.IsValid)
+            return BadRequest();
+
         var registerResult = await _userService.RegisterAsync(registerRequest);
 
         if (!registerResult.Success)
@@ -47,10 +51,12 @@ public class UserController : ControllerBase
 
     [HttpPost("login")]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> LogIn([FromBody] LogInRequest loginRequest)
     {
-        var logInResult = await _userService.LogIn(loginRequest);
+        if (loginRequest is null || !ModelState.IsValid)
+            return BadRequest();
 
         var logInResult = await _userService.LogInAsync(loginRequest);
         if (!logInResult.Success)
